@@ -1,3 +1,5 @@
+package Application;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -8,21 +10,29 @@ public class GamePanel extends JPanel {
     public static final int SCREEN_HEIGHT = 600;
     public static final int SCREEN_WIDTH = 600;
     public static final int UNIT_SIZE = 200;
-    public static final int UNIT_AMOUT = (SCREEN_HEIGHT * SCREEN_WIDTH) / (UNIT_SIZE * UNIT_SIZE);
     private char[][] board = new char[3][3];
     public boolean running = true;
     private int playerAmount;
     private char symbol = 'X';
-    private char winner;
-    // private boolean isVisible=false;
 
-    public GamePanel(int playerAmount) {
+    private char humanSymbol;
+    private char winner;
+
+    public GamePanel(int playerAmount, char humanSymbol) {
         this.addMouseListener(new MyMouseListener());
         this.setPreferredSize(new Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
         this.setBackground(Color.white);
         this.setFocusable(true);
         this.setVisible(true);
         this.playerAmount = playerAmount;
+        this.humanSymbol = humanSymbol;
+        if (this.playerAmount == 2) {
+            this.symbol = humanSymbol;
+        } else if (this.playerAmount == 1 && this.humanSymbol == 'O') {
+            makeMove();
+            repaint();
+            this.symbol = 'O';
+        }
     }
 
 
@@ -38,7 +48,6 @@ public class GamePanel extends JPanel {
         }
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
-                //System.out.println(board[i][j]);
                 if (board[i][j] == 'O') {
                     g.drawOval(j * UNIT_SIZE, i * UNIT_SIZE, UNIT_SIZE, UNIT_SIZE);
                 } else if (board[i][j] == 'X') {
@@ -51,7 +60,11 @@ public class GamePanel extends JPanel {
             g.setColor(Color.RED);
             g.setFont(new Font("Ink Free", Font.BOLD, 30));
             FontMetrics metrics1 = getFontMetrics(g.getFont());
-            g.drawString("Wygrał gracz: " + winner, (SCREEN_WIDTH - metrics1.stringWidth("Wygrał gracz: " + winner)) / 2, g.getFont().getSize());
+            if(winner=='O' || winner=='X') {
+                g.drawString("Wygrał gracz: " + winner, (SCREEN_WIDTH - metrics1.stringWidth("Wygrał gracz: " + winner)) / 2, g.getFont().getSize());
+            }else{
+                g.drawString("Remis!", (SCREEN_WIDTH - metrics1.stringWidth("Remis!")) / 2, g.getFont().getSize());
+            }
         }
 
     }
@@ -90,7 +103,6 @@ public class GamePanel extends JPanel {
             for (int j = 0; j < 3; j++) {
                 if ((board[0][i] == board[j][i]) && (board[j][i] == 'X' || board[j][i] == 'O')) {
                     linia++;
-                    //System.out.println(linia);
                 }
                 if (linia == 3) {
                     return board[j][i];
@@ -120,7 +132,6 @@ public class GamePanel extends JPanel {
             for (int j = 0; j < 3; j++) {
                 if (board[i][j] == 'X' || board[i][j] == 'O') {
                     linia++;
-
                 }
             }
         }
@@ -132,17 +143,17 @@ public class GamePanel extends JPanel {
     }
 
     private void makeMove() {
-        if (running) {
+        int bestI = -1;
+        int bestJ = -1;
+        int score;
+        if (running && humanSymbol == 'X') {
             int bestScore = (int) Double.NEGATIVE_INFINITY;
-            int bestI = -1;
-            int bestJ = -1;
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
                     if (board[i][j] != 'X' && board[i][j] != 'O') {
                         board[i][j] = 'O';
-                        int score = miniMax(board, 9, false);
+                        score = miniMax(board, 9, false);
                         board[i][j] = 'n';
-                        System.out.println(score);
                         if (score > bestScore) {
                             bestScore = score;
                             bestI = i;
@@ -150,19 +161,29 @@ public class GamePanel extends JPanel {
                         }
                     }
                 }
-
             }
-            System.out.println(bestScore);
             board[bestI][bestJ] = 'O';
+        }else if(running && humanSymbol == 'O'){
+            int bestScore = (int) Double.POSITIVE_INFINITY;
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
-                    System.out.println(board[i][j]);
+                    if (board[i][j] != 'X' && board[i][j] != 'O') {
+                        board[i][j] = 'X';
+                        score = miniMax(board, 9, true);
+                        board[i][j] = 'n';
+                        if (score < bestScore) {
+                            bestScore = score;
+                            bestI = i;
+                            bestJ = j;
+                        }
+                    }
                 }
             }
+            board[bestI][bestJ] = 'X';
         }
     }
 
-    private int miniMax(char[][] board, int depth, boolean maximizingPlayer) {
+    public int miniMax(char[][] board, int depth, boolean maximizingPlayer) {
         char winner = checkLines(board);
         if (winner == 'X') {
             return -1;
@@ -179,7 +200,6 @@ public class GamePanel extends JPanel {
                     if (board[i][j] != 'X' && board[i][j] != 'O') {
                         board[i][j] = 'O';
                         score = miniMax(board, depth + 1, false);
-                        //System.out.println(score);
                         board[i][j] = 'n';
                         if (score > bestScore) {
                             bestScore = score;
@@ -195,7 +215,6 @@ public class GamePanel extends JPanel {
                     if (board[i][j] != 'X' && board[i][j] != 'O') {
                         board[i][j] = 'X';
                         score = miniMax(board, depth + 1, true);
-                        //System.out.println(score);
                         board[i][j] = 'n';
                         if (score < bestScore) {
                             bestScore = score;
@@ -226,18 +245,21 @@ public class GamePanel extends JPanel {
                                 repaint();
                                 checkWinner(checkLines(board));
                                 if (playerAmount == 1) {
-                                    makeMove();
-                                    symbol = 'X';
+                                    if (humanSymbol == 'X') {
+                                        makeMove();
+                                        symbol = 'X';
+                                    } else {
+                                        makeMove();
+                                        symbol = 'O';
+                                    }
                                     repaint();
                                     checkWinner(checkLines(board));
                                 }
                             }
                         }
                     }
-
                 }
             }
         }
-
     }
 }
